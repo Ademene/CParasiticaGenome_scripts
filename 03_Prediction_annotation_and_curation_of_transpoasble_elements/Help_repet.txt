@@ -1,0 +1,171 @@
+#### Suite de commande et problèmes fréquents pour lancer REPET : TEdenovo et TEannot : 
+
+### Exemple pour mon génome DUM005, sur mon compte URGI : 
+
+ssh -XY guestFormation@138.102.146.69
+
+mkdir DUM
+cd DUM
+mkdir TEdenovo
+mkdir TEannot
+cp cheminverslefichier/setEnv.sh .
+source setEnv.sh
+cd TEdenovo
+cp Cheminverslefichier/TEdenovo.cfg .
+vi TEdenovo.cfg
+### Dans vi : "i" pour pouvoir modifier le fichier, quand c'est finit : "esc" puis ":x" et entrer pour sauvergarder la modif
+### modifier dans le fichier TEdenovo : 
+# project_name : DUM
+# project_dir: /home/guestFormation/28_08_2019/DUM/TEdenovo
+### quand c'est finit : "esc" puis ":x" et entrer pour sauvergarder la modif
+
+
+## Attention !!! ## Pour le génome il faut qu'il soit wrap en 80 characters - il y a des script facile pour faire ça :
+## ex : seqtk seq -l 80 MRC010_cutoff_Scaffolded_largest.fasta > MRC010.fa
+## Attention aux noms aussi, espaces et tab interdits !
+## Enfin, attention au nom : si dans le .cfg on a mis prject_name : DUM alors le fasta doit s'appeler : DUM.fa
+
+
+ln -s cheminverslegenome/DUM005.fa DUM.fa
+
+ln -s ../../Chig/TEdenovo/ProfilesBankForREPET_Pfam27.0_GypsyDB.hmm .
+ln -s ../../Chig/TEdenovo/rRNA_Eukaryota.fsa .
+
+## La je mets 2 liens symboliques avec .fa et .fsa car il y a des divergences entre le tuto et
+## ce qu'il y a dans leur dossier... dans le doute je mets les deux
+
+ln -s ../../Chig/TEdenovo/repbase22.05_aaSeq_cleaned_TE.fa .
+ln -s ../../Chig/TEdenovo/repbase22.05_aaSeq_cleaned_TE.fa repbase22.05_aaSeq_cleaned_TE.fsa
+ln -s ../../Chig/TEdenovo/repbase22.05_ntSeq_cleaned_TE.fa .
+ln -s ../../Chig/TEdenovo/repbase22.05_ntSeq_cleaned_TE.fa repbase22.05_ntSeq_cleaned_TE.fsa
+
+### Lancer le TEdenovo : 
+
+nohup launch_TEdenovo.py -P DUM -C TEdenovo.cfg -S 12345678 -f MCL -v 3 >& outputFile.txt &
+
+## Note : Si une erreur arrive, supprimer les dossiers produits avec : rm -r
+## Erreur que j'ai eu : DbMySql - ERROR - ERROR 2002: Can't connect to local MySQL server through socket '/tmp/mysql.sock' (2)
+## resoudre comme suit : 
+##  cd /tmp
+##  ln -s /var/lib/mysql/mysql.sock
+## Le lien s'efface après du temps en fait...
+
+## Verifier l'avancement, faire de temps en temps : 
+
+tail outputFile.txt
+
+## Quand c'est finit, on passe au TEannot : 
+
+
+cd ../TEannot
+cp Cheminverslefichier/TEannot.cfg .
+vi TEannot.cfg
+### Dans vi : "i" pour pouvoir modifier le fichier, quand c'est finit : "esc" puis ":x" et entrer pour sauvergarder la modif
+### modifier dans le fichier TEannot.cfg : 
+# project_name : DUM
+# project_dir: /home/guestFormation/28_08_2019/DUM/TEdenovo
+### quand c'est finit : "esc" puis ":x" et entrer pour sauvergarder la modif
+
+ln -s ../../DUM005.fa DUM.fa
+ln -s ../TEdenovo/DUM_Blaster_GrpRecPil_Map_TEclassif_Filtered/DUM_sim_denovoLibTEs_filtered.fa DUM_refTEs.fa
+
+## Lancer le TEannot : 
+
+nohup launch_TEannotByStep.py -P DUM -C TEannot.cfg -S 1234578 -v 3 >& outputFile.txt &
+
+## Idem pour check l'avancement : 
+
+tail outputFile.txt
+
+#### SUITE, pour créer les post analysis files : 
+### Mais déjà très bien expliqué ici : https://biosphere.france-bioinformatique.fr/wikia2/index.php/REPET_practical_course_2019#Get_all_the_annotations_done_by_PASTEC_.28TEdenovo.2C_step_5.29_on_the_Consensus
+### au cas où comment j'ai fais : 
+
+## Vérifier les variables d’environnement:
+echo $REPET_PATH
+## dois sortir du genre : /usr/local/REPET_linux-x64-2.5
+
+cp cheminverslefichier/CreateGFF3sForClassifFeatures.cfg DUM/TEdenovo/.
+
+## Modifier avec vi : 
+vi CreateGFF3sForClassifFeatures.cfg
+## project_name: DUM                                                                                                    
+## project_dir: /home/guestFormation/28_08_2019/DUM/TEdenovo
+## project_name_teannot: DUM
+
+ln -s DUM_Blaster_GrpRecPil_Map_TEclassif_Filtered/DUM_sim_denovoLibTEs_filtered.fa
+
+## Lancer l'outil : 
+nohup CreateGFF3sForClassifFeatures.py -C CreateGFF3sForClassifFeatures.cfg -f DUM_sim_denovoLibTEs_filtered.fa -v 1 >& runGff3Evidences.txt &
+
+### SI erreur suivant dans le fichier runGff3Evidences.txt : commons.core.checker.RepetException.RepetException: ERROR: can't find environment variable 'REPET_USER'
+## c'est que l'environnement n'est pas sourcé il faut le faire : 
+
+cp ../setEnv.sh .
+source setEnv.sh
+
+## Puis relancer la commande nohup
+## Si tout se passe bien , les resultats sont dans le fichier Vizualisatio_files
+
+## revers les gff : 
+
+cd Visualization_Files/; mkdir gff_reversed
+cut -f1,2 ../DUM_Blaster_GrpRecPil_Map_TEclassif_Filtered/classifFileFromList.classif > DUM_sim_denovoLibTEs_filtered.len
+vi reverse.sh
+### dans vi copier coller ceci : 
+for file in `ls *.gff3`;
+do
+grep -P "^#" $file > gff_reversed/$file;
+while read TE len;
+do gawk -F"\t" '{if($1 ~ /_reversed/ && $1 ~ /'$TE'/){rstart='$len'-$5+1;rend='$len'-$4+1; if($7 ~ /+/){rstr="-"}; if($7 ~ /-/){rstr="+"};OFS="\t";print $1,$2,$3,rstart,rend,$6,rstr,$8,$9}else{if($1 ~ /'$TE'/){print $0}}}' $file; done < Chig_sim_denovoLibTEs_filtered.len >> gff_reversed/$file;
+done
+### à adapter selon le nom du projet
+
+bash reverse.sh
+
+#### Pour les plot coverage : 
+### Encore une fois voir le wiki qui est bien expliqué mais just pour les plot coverage : 
+## juste sur le wiki ils mettent : 
+# python $PYTHONPATH/SMART/Java/Python/plotCoverage.py -i  etc. ...
+# ça marchait pas pour moi il le trouvait pas j'ai remplacé par : 
+# nohup plotCoverage.py
+# bien penser à sourcer l'environment
+
+cd ../TEannot/
+cat DUM_GFF3chr/*.gff3 | grep -v "##" > DUM_refTEs.gff
+mkdir plotCoverage
+nohup plotCoverage.py -i DUM_refTEs.gff -f gff3 -q DUM_refTEs.fa --merge -l grey -o plotCoverage/DUM >& runPlotCoverage.log &
+tail runPlotCoverage.log
+### Si affiché : Exception AttributeError: "'PlotParser' object has no attribute 'outputFileName'" in <bound method PlotParser.__del__ of <__main__.PlotParser object at 0x7f001c02fa90>> ignored
+### C'est que l'environnement n'est pas sourcé : source setEnv.sh
+rm *.Rout
+
+## Library classif  : 
+
+gawk '{if(/>/){gsub(">","",$0);print}}' DUM_refTEs.fa > DUM_refTEs.lst
+egrep -f DUM_refTEs.lst ../TEdenovo/DUM_Blaster_GrpRecPil_Map_TEclassif/classifConsensus/DUM_sim_withoutRedundancy_negStrandReversed_WickerH.classif > DUM_refTEs.classif
+
+## Pour la curation : 
+## Stats + Select consensus for the second round of TEannot
+# Modifier l'arg -g pour mettre la taille du génome
+nohup PostAnalyzeTELib.py -a 3 -g 38000000 -p DUM_chr_allTEs_nr_noSSR_join_path -s DUM_refTEs_seq -v 2 >& runPostAnalyze.log &
+nohup GetSpecificTELibAccordingToAnnotation.py -i DUM_chr_allTEs_nr_noSSR_join_path.annotStatsPerTE.tab -t DUM_refTEs_seq -v1 >& GetSpecificTELibAccordingToAnnotation.log &
+# récupérer la liste des TE avec au moins un full length frag : 
+ egrep ">" DUM_chr_allTEs_nr_noSSR_join_path.annotStatsPerTE_FullLengthFrag.fa |sed 's/>//' > DUM_chr_allTEs_nr_noSSR_join_path.annotStatsPerTE_FullLengthFrag.lst
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,61 @@
+### Mummer 
+
+
+### Nucmer
+
+# Lancer nucmer : 
+nucmer -t thread_number -c minimum_size_of_alignments -p prefix ref_genome.fa query_seqs.fasta
+exemple : 
+nucmer -t 18 -c 150 -p transcriptEP155_aligned_ESM015 Cparasiticav2.GeneCatalog20091217.transcripts.fasta ESM015X.fa
+
+# lancer show-coords
+
+show-coords -r -c -l prefix.delta > prefix.coords
+
+# Le fichier de sortie .coords est un tableau qui récapitule toutes les séquences query alignées sur le génomr de ref : 
+
+    [S1]     [E1]  |     [S2]     [E2]  |  [LEN 1]  [LEN 2]  |  [% IDY]  |  [LEN R]  [LEN Q]  |  [COV R]  [COV Q]  | [TAGS]
+===============================================================================================================================
+      54     2155  |   156800   154636  |     2102     2165  |    96.95  |     2155  1163744  |    97.54     0.19  | jgi|Crypa2|100003|Crypa1.estExt_fgenesh1_pm.C_100013	utg000005l
+       1      265  |   321440   321176  |      265      265  |   100.00  |     1078  1163744  |    24.58     0.02  | jgi|Crypa2|100024|Crypa1.estExt_fgenesh1_pm.C_100052	utg000005l
+
+[S1] pos start de la ref
+[E1] pos end de la ref
+[S2] pos start de la query
+[E2] pos end de la query
+[LEN 1] length of the alignment region in the reference sequence
+[LEN 2] length of the alignment region in the query sequence
+[% IDY] pourcentage d'identité entre les deux séquences (% de bases identiques)
+[LEN R] length of the reference sequence 
+[LEN Q] length of the query sequence
+[COV R] percent alignment coverage in the reference sequence 
+[COV Q] percent alignment coverage in the query sequence
+[TAGS] the reference and query FastA IDs respectively
+
+### NOTE : bien faire attention de l'organisation de la commande pour lancer nucmer, pour que les colonnes REF et QUERY correspondent bien, bien mettre : nucmer [options] ref.fa query.fa 	Dans cet ordre.
+
+### Dificile d'exploiter ce fichier tel quel dans R ou excel etc. avec les [], les | ...
+### Ils ont pensé à tout : il est possible de rajouter -T dans les options en lançant show-coords pour avoir un output tab-delimited :)
+# Ce qui donne ceci : 
+
+[S1]	[E1]	[S2]	[E2]	[LEN 1]	[LEN 2]	[% IDY]	[LEN R]	[LEN Q]	[COV R]	[COV Q]	[TAGS]
+54	2155	156800	154636	2102	2165	96.95	2155	1163744	97.54	0.19	jgi|Crypa2|100003|Crypa1.estExt_fgenesh1_pm.C_100013	utg000005l
+1	265	321440	321176	265	265	100.00	1078	1163744	24.58	0.02	jgi|Crypa2|100024|Crypa1.estExt_fgenesh1_pm.C_100052	utg000005l
+
+### VIsualiser le plot : 
+
+mummerplot prefix.delta 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
