@@ -42,7 +42,7 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 
 # Genes density plot
 
-data <- read.csv('/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/13_Figures_finales/Gene_density_plot/Intergenic_EF_SP_MS.txt', sep = '\t', header = T)
+data <- read.csv('/home/arthur/Bureau/Article_Genome/Gene_density_plot/Intergenic_EF_SP_MS.txt', sep = '\t', header = T)
 colnames(data) <- c('gene','down','up', 'EffectorP', 'SignalP', 'antiSMASH')
 ggplot(data) +
     aes(x= up,y=down) +
@@ -53,11 +53,20 @@ ggplot(data) +
     scale_y_log10("5' intergenic length (bp)", breaks=c(10,100,1000,10000,100000), labels=c("10", "100", "1,000", "10,000", "100,000"), limits = c(5, 300000))+
     theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1))+
     annotation_logticks()+
-    geom_point(data=subset(data, EffectorP == "EFF"), color = 'black', fill = 'yellow',shape = 21,alpha = 0.8, size = 1)
+    #geom_point(data=subset(data, EffectorP == "EFF"), color = 'black', fill = 'yellow',shape = 21,alpha = 0.8, size = 1)
     #geom_point(data=subset(data, SignalP == "SP"), color = 'black', fill = 'blue',shape = 21,alpha = 0.8, size = 1)
     #geom_point(data=subset(data, antiSMASH == "MS"), color = 'black', fill = 'red',shape = 21,alpha = 0.8, size = 1)
-    #geom_point(data=subset(data, EffectorP == "EFF" & SignalP == "SP"), color = 'black', fill = 'white',shape = 21,alpha = 0.8, size = 1.5)
+    geom_point(data=subset(data, EffectorP == "EFF" & SignalP == "SP"), color = 'black', fill = 'white',shape = 21,alpha = 0.8, size = 1.5)
 
+# Verif moyennes intergenic length :
+
+sum(data$down + data$up) / (nrow(data) * 2)
+aggregate(data$down, by=list(Category=data$antiSMASH), FUN=t.test)
+aggregate(data$up, by=list(Category=data$antiSMASH), FUN=t.test)
+aggregate(data$down, by=list(Category=data$EffectorP), FUN=mean)
+aggregate(data$up, by=list(Category=data$EffectorP), FUN=mean)
+aggregate(data$down, by=list(Category=data$SignalP), FUN=mean)
+aggregate(data$up, by=list(Category=data$SignalP), FUN=mean)
 # TEs density plot
 
 data2 <- read.csv('/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/13_Figures_finales/Density_plot_TEs/InterTEs.families.closest.txt', sep = '\t', header = T)
@@ -79,9 +88,9 @@ ggplot(data2) +
 # Fonction variance
 data_summary <- function(x) {
   m <- mean(x)
-  ymin <- m-var(x)
-  ymax <- m+var(x)
-  if (ymin < 0) {ymin <- 0}
+  ymin <- m-sqrt(var(x))
+  ymax <- m+sqrt(var(x))
+  if (ymin < 0) {ymin <- 1}
   return(c(y=m,ymin=ymin,ymax=ymax))
 }
 
@@ -101,8 +110,28 @@ ggplot(data3, aes(y = MinimalDistance, x=Family, fill = Family, alpha = 1/10))+
   #geom_dotplot(aes(y=down,x=Family), binaxis='y', stackdir='center', dotsize=0.1) +
 
 # Violin plots genes distance minimal to TEs:
-data4 <- read.csv('/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/13_Figures_finales/Distance_genes_TEs/Min_Dist_Gene_to_TE_EF_SP_MS.txt', sep = '\t', header = T)
+data4 <- read.csv('/home/arthur/Bureau/Article_Genome/Gene_density_plot/Min_Dist_Gene_to_TE_EF_SP_MS.txt', sep = '\t', header = T)
 colnames(data4) <- c('gene','DistToTE','EffectorP', 'SignalP', 'antiSMASH')
+
+# IC 95% 
+library(plotrix)
+'''
+n_obs_NotEFF = sum(data4$EffectorP=="notEFF")
+n_obs_EFF = sum(data4$EffectorP=="EFF")
+std_notEFF = sd(data4$DistToTE[data4$EffectorP=="notEFF"])
+std_EFF = sd(data4$DistToTE[data4$EffectorP=="EFF"])
+std.error(data4$DistToTE[data4$EffectorP=="EFF"])
+
+n_obs_NotSP = sum(data4$SignalP=="notSP")
+n_obs_SP = sum(data4$SignalP=="SP")
+std_notSP = sd(data4$DistToTE[data4$SignalP=="notSP"])
+std_SP = sd(data4$DistToTE[data4$SignalP=="SP"])
+
+n_obs_NotMS = sum(data4$antiSMASH=="notMS")
+n_obs_MS = sum(data4$antiSMASH=="MS")
+std_notMS = sd(data4$DistToTE[data4$antiSMASH=="notMS"])
+std_MS = sd(data4$DistToTE[data4$antiSMASH=="MS"])
+'''
 
 # Effectors
 pa <- ggplot(data4, aes(y = DistToTE, x=EffectorP, fill = EffectorP, alpha = 1/10))+
@@ -114,7 +143,11 @@ pa <- ggplot(data4, aes(y = DistToTE, x=EffectorP, fill = EffectorP, alpha = 1/1
   ylab("Distance to the nearest TE (bp)") +
   xlab("") +
   scale_fill_manual(values = c( "#E69F00", "#999999"), name = "")+
-  stat_summary(fun.data=data_summary, color="grey2", show.legend = FALSE)+
+  # stat_summary give wrong mean
+  #stat_summary(fun=mean, geom="point", color="grey2", show.legend = FALSE)+
+  geom_point(aes(x=1, y=mean(data4$DistToTE[data4$EffectorP=="notEFF"])), colour="black", show.legend = FALSE) +
+  geom_point(aes(x=2, y=mean(data4$DistToTE[data4$EffectorP=="EFF"])), colour="black", show.legend = FALSE) +
+  #geom_rect(aes(xmin = 2, xmax = 2.1, ymin = mean(data4$DistToTE[data4$EffectorP=="EFF"]) - (1.96 / sqrt(n_obs_EFF) * std_EFF), ymax = mean(data4$DistToTE[data4$EffectorP=="EFF"]) + (3.291 / sqrt(n_obs_EFF) * std_EFF)), alpha=0.2, fill="grey") +
   annotation_logticks(sides = "rl")+
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1))+
   geom_signif(comparisons = list(c("notEFF", "EFF")), map_signif_level=TRUE, show.legend = FALSE)+
@@ -129,7 +162,10 @@ pb <- ggplot(data4, aes(y = DistToTE, x=SignalP, fill = SignalP, alpha = 1/10))+
   ylab("") +
   xlab("") +
   scale_fill_manual(values = c("#999999","#56B4E9"), name = "")+
-  stat_summary(fun.data=data_summary, color="grey2", show.legend = FALSE)+
+  # stat_summary give wrong mean
+  #stat_summary(fun=mean, geom="point", color="grey2", show.legend = FALSE)+
+  geom_point(aes(x=1, y=mean(data4$DistToTE[data4$SignalP=="notSP"])), colour="black", show.legend = FALSE) +
+  geom_point(aes(x=2, y=mean(data4$DistToTE[data4$SignalP=="SP"])), colour="black", show.legend = FALSE) +
   annotation_logticks(sides = "rl")+
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1))+
   geom_signif(comparisons = list(c("notSP", "SP")), map_signif_level=TRUE, show.legend = FALSE)+
@@ -144,12 +180,18 @@ pc <- ggplot(data4, aes(y = DistToTE, x=antiSMASH, fill = antiSMASH, alpha = 1/1
   ylab("") +
   xlab("") +
   scale_fill_manual(values = c("indianred", "#999999"), name = "")+
-  stat_summary(fun.data=data_summary, color="grey2", show.legend = FALSE)+
+  # stat_summary give wrong mean
+  #stat_summary(fun=mean, geom="point", color="grey2", show.legend = FALSE)+
+  geom_point(aes(x=1, y=mean(data4$DistToTE[data4$antiSMASH=="notMS"])), colour="black", show.legend = FALSE) +
+  geom_point(aes(x=2, y=mean(data4$DistToTE[data4$antiSMASH=="MS"])), colour="black", show.legend = FALSE) +
   annotation_logticks(sides = "rl")+
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1))+
-  geom_signif(comparisons = list(c("notMS", "MS")), map_signif_level=TRUE, show.legend = FALSE)+
+  geom_signif(comparisons = list(c("notMS", "MS")), test = "wilcox.test", map_signif_level=TRUE, show.legend = FALSE)+
   theme_light()
 
+multiplot(pa, pb, pc, cols = 3)
+mean(data4$DistToTE[data4$EffectorP=="EFF"])
+data_summary(data4$DistToTE[data4$EffectorP=="EFF"])
 multiplot(pa, pb, pc, cols = 3)
 
 ## tests : 
@@ -234,8 +276,8 @@ ggplot(data_GC,aes(x = GC_2digits, weight = portion),stat="count")+
 
 
 ## RIP Signatures
-data_RIP <- read.csv('/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/13_Figures_finales/RIP_signatures/Home_made_method/NewHeader.RIP_signatures_v2.txt', sep = '\t', header = F)
-data_RIP_EP155 <- read.csv('/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/13_Figures_finales/RIP_signatures/Home_made_method/EP155/NewHeader.RIP_signatures_v2.txt', sep = '\t', header = F)
+data_RIP <- read.csv('/home/arthur/Bureau/Article_Genome/Last_modif_Fev2021/RIP_rework_IC96/RIP_signatures_before/Home_made_method/NewHeader.RIP_signatures_v2.txt', sep = '\t', header = F)
+data_RIP_EP155 <- read.csv('//home/arthur/Bureau/Article_Genome/Last_modif_Fev2021/RIP_rework_IC96/RIP_signatures_before/Home_made_method/EP155/NewHeader.RIP_signatures_v2.txt', sep = '\t', header = F)
 colnames(data_RIP) <- c("TEname", "CpA", "TpG", "ApC", "GpT", "TpA", "ApT", "CpG", "GpC", "indice1", "indice2", "indice3", "typeTE")
 colnames(data_RIP_EP155) <- c("TEname", "CpA", "TpG", "ApC", "GpT", "TpA", "ApT", "CpG", "GpC", "indice1", "indice2", "indice3", "typeTE")
 data_RIP$typeTE <- as.factor(data_RIP$typeTE)
@@ -245,7 +287,27 @@ data_RIP_EP155$typeTE <- as.factor(data_RIP_EP155$typeTE)
 data_RIP_EP155$indice2 <- as.numeric(data_RIP_EP155$indice2)
 data_RIP_EP155$indice1 <- as.numeric(data_RIP_EP155$indice1)
 
+# Confidence Interval 95% for baseline value :
+Baseline_value_EP155 <- read.csv('/home/arthur/Bureau/Article_Genome/Last_modif_Fev2021/RIP_rework_IC96/RIP_signatures_rework/Cryphonectria_parasiticav2.nuclearAssembly.masked.singleline.RIP', sep = '\t', header = T)
+Baseline_value_ESM015 <-read.csv('/home/arthur/Bureau/Article_Genome/Last_modif_Fev2021/RIP_rework_IC96/RIP_signatures_rework/FESM.masked.singleline.RIP', sep = '\t', header = T)
 
+# IC 95% formula : 1.96 / sqrt(n_observations) * std
+
+n_obs_value_EP155_CpA_TpG_ApC_GpT = sum(Baseline_value_EP155[4] != 'NaN')
+n_obs_value_EP155_TpA_ApT = sum(Baseline_value_EP155[5] != 'NaN')
+n_obs_value_EP155_CpG_GpC = sum(Baseline_value_EP155[6] != 'NaN')
+
+n_obs_value_ESM015_CpA_TpG_ApC_GpT = sum(Baseline_value_ESM015[4] != 'NaN')
+n_obs_value_ESM015_TpA_ApT = sum(Baseline_value_ESM015[5] != 'NaN')
+n_obs_value_ESM015_CpG_GpC = sum(Baseline_value_ESM015[6] != 'NaN')
+
+std_EP155_CpA_TpG_ApC_GpT = sd(Baseline_value_EP155[4] != 'NaN')
+std_EP155_TpA_ApT = sd(Baseline_value_EP155[5] != 'NaN')
+std_EP155_CpG_GpC = sd(Baseline_value_EP155[6] != 'NaN')
+
+std_ESM015_CpA_TpG_ApC_GpT = sd(Baseline_value_ESM015[4] != 'NaN')
+std_ESM015_TpA_ApT = sd(Baseline_value_ESM015[5] != 'NaN')
+std_ESM015_CpG_GpC = sd(Baseline_value_ESM015[6] != 'NaN')
 
 ##CpG/GpC
 # ESM015 :
@@ -264,7 +326,8 @@ p1 <- ggplot(data = subset(data_RIP, typeTE != "PotentialHostGene"), aes(x= type
   scale_y_continuous(limits = c(0,5), breaks=c(0,1,2,3,4,5), labels=c("0", "1", "2", "3", "4", "5"))+
   scale_fill_brewer(palette="Paired") +
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1)) +
-  scale_x_discrete(labels=c("Crypt1", "DNA TEs", "Gypsy", "RNA TEs"), position = "bottom")+
+  scale_x_discrete(labels=c("Crypt1", "DNA TEs", "Gypsy", "RNA TEs"), position = "bottom") +
+  geom_rect(aes(xmin = 0, xmax = Inf, ymin = 0.82 - (3.291 / sqrt(n_obs_value_ESM015_CpG_GpC) * std_ESM015_CpG_GpC), ymax = 0.82 + (3.291 / sqrt(n_obs_value_ESM015_CpG_GpC) * std_ESM015_CpG_GpC)), alpha=0.2, fill="grey") +
   theme_light()
 # EP155 :
 p2 <- ggplot(data = subset(data_RIP_EP155, typeTE != "PotentialHostGene"), aes(x= typeTE , y=indice3, fill = typeTE))+
@@ -282,6 +345,7 @@ p2 <- ggplot(data = subset(data_RIP_EP155, typeTE != "PotentialHostGene"), aes(x
   scale_fill_brewer(palette="Paired") +
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1)) +
   scale_x_discrete(labels=c("Crypt1", "DNA TEs", "Gypsy", "RNA TEs"), position = "bottom")+
+  geom_rect(aes(xmin = 0, xmax = Inf, ymin = 0.81 - (3.291 / sqrt(n_obs_value_EP155_CpG_GpC) * std_EP155_CpG_GpC), ymax = 0.81 + (3.291 / sqrt(n_obs_value_EP155_CpG_GpC) * std_EP155_CpG_GpC)), alpha=0.2, fill="grey") +
   theme_light()
 
 
@@ -302,6 +366,7 @@ p3 <- ggplot(data = subset(data_RIP, typeTE != "PotentialHostGene"), aes(x= type
   scale_fill_brewer(palette="Paired") +
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1)) +
   scale_x_discrete(labels=c("", "", "", ""))+
+  geom_rect(aes(xmin = 0, xmax = Inf, ymin = 0.668 - (3.291 / sqrt(n_obs_value_ESM015_TpA_ApT) * std_ESM015_TpA_ApT), ymax = 0.668 + (3.291 / sqrt(n_obs_value_ESM015_TpA_ApT) * std_ESM015_TpA_ApT)), alpha=0.2, fill="grey") +
   theme_light()
 
 # EP155 :
@@ -321,6 +386,7 @@ p4 <- ggplot(data = subset(data_RIP_EP155, typeTE != "PotentialHostGene"), aes(x
   xlab(label = '')+
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1)) +
   scale_x_discrete(labels=c("", "", "", ""))+
+  geom_rect(aes(xmin = 0, xmax = Inf, ymin = 0.676 - (3.291 / sqrt(n_obs_value_EP155_TpA_ApT) * std_EP155_TpA_ApT), ymax = 0.676 + (3.291 / sqrt(n_obs_value_EP155_TpA_ApT) * std_EP155_TpA_ApT)), alpha=0.2, fill="grey") +
   theme_light()
 
 ##(CpA+TpG)/(ApC+GpT)
@@ -340,6 +406,7 @@ p5 <- ggplot(data = subset(data_RIP, typeTE != "PotentialHostGene"), aes(x= type
   scale_fill_brewer(palette="Paired") +
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1)) +
   scale_x_discrete(labels=c("", "", "", ""), position = "top")+
+  geom_rect(aes(xmin = 0, xmax = Inf, ymin = 1.28 - (3.291 / sqrt(n_obs_value_ESM015_CpA_TpG_ApC_GpT) * std_ESM015_CpA_TpG_ApC_GpT), ymax = 1.28 + (3.291 / sqrt(n_obs_value_ESM015_CpA_TpG_ApC_GpT) * std_ESM015_CpA_TpG_ApC_GpT)), alpha=0.2, fill="grey") +
   theme_light()
 # EP155 :
 p6 <- ggplot(data = subset(data_RIP_EP155, typeTE != "PotentialHostGene"), aes(x= typeTE , y=indice1, fill = typeTE))+
@@ -357,6 +424,7 @@ p6 <- ggplot(data = subset(data_RIP_EP155, typeTE != "PotentialHostGene"), aes(x
   scale_fill_brewer(palette="Paired") +
   theme(axis.line = element_line(colour = "black", size = 0.8, linetype = 1)) +
   scale_x_discrete(labels=c("", "", "", ""), position = "top")+
+  geom_rect(aes(xmin = 0, xmax = Inf, ymin = 1.28 - (3.291 / sqrt(n_obs_value_EP155_CpA_TpG_ApC_GpT) * std_EP155_CpA_TpG_ApC_GpT), ymax = 1.28 + (3.291 / sqrt(n_obs_value_EP155_CpA_TpG_ApC_GpT) * std_EP155_CpA_TpG_ApC_GpT)), alpha=0.2, fill="grey") +
   theme_light()
 
 # Combine plots : 
