@@ -1,4 +1,5 @@
 #/!bin/bash
+# Don't use this script, prefere use Calcul_coverage_bam.sh
 
 bam=/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/1_Assemblage/Misassemblies_verification/ESM015_2/ONT_besthit.sorted.bam
 out=/media/arthur/2d3b38bd-0114-4823-bee9-582327c7cbdf/Arthur/MINION/00_Methods_Article/1_Assemblage/Misassemblies_verification/ESM015_2/Coverage.bw
